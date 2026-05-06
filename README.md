@@ -1,12 +1,42 @@
-# The Negotiator
-협상가(2026-1 인공지능플랫폼 팀프로젝트 언리얼 &amp; FastAPI)
-> **AI 기반 협상 시뮬레이션 게임**
+# TheNegotiator
 
-## 🛠 Tech Stack
-- **Client**: Unreal Engine 5
-- **Server**: FastAPI (Python 3.12+)
-- **Communication**: REST API (VaRest)
+> 협상가 (2026-1 인공지능플랫폼 팀프로젝트)
 
-## 🚀 Quick Start
-1. 서버 실행: `python -m uvicorn main:app --reload`
-2. 언리얼 실행: `TheNegotiator.uproject` 오픈 후 Play
+## 팀
+| 이름 | 역할 |
+|------|------|
+| 이경준 | 클라이언트(Unreal) |
+| 이유찬 | 백엔드(FastAPI) |
+| 김동훈 | AI 모델링 |
+
+## 기술 스택
+- Unreal Engine [5.6]
+- FastAPI
+- C++
+- Python
+- Git / GitHub
+
+## 브랜치 전략
+- `main` : 릴리즈 전용
+- `develop` : 개발 통합
+- `feature/*` : 기능 단위 작업
+
+## 시작하기
+1. `develop` 브랜치 클론
+2. Unreal Project에서 프로젝트 열기
+3. 작업 전 반드시 `feature/` 브랜치 생성
+
+## 커밋 컨벤션
+| 타입 | 설명 |
+|------|------|
+| feat | 새 기능 |
+| fix | 버그 수정 |
+| refactor | 리팩토링 |
+| docs | 문서 수정 |
+| chore | 기타 잡다한 것 |
+
+## 숙지할 것
+1. **브랜치 생성 시점**: 새로운 기능을 시작할 때 항상 **develop** 브랜치에서 최신 내용을 **Pull** 받은 뒤 새로운 브랜치 생성
+2. **작업 단위 최소화**: 브랜치 하나에서 기능을 몰아 넣지  말것. 
+"UI 만들기" →  "채팅창 UI 구현", "감정 게이지 구현" 처럼 작게 쪼개기
+3. **삭제의 미학**: **main**이나 **develop**에 합쳤으면, 역할을 다한 **feature** 브랜치는 바로 삭제
