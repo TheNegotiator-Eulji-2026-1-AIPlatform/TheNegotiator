@@ -14,7 +14,8 @@ async def test_communication(msg: Message):
     return {
         "status": "success",
         "received_text": msg.text,
-        "emotion_score": 0.5
+        "happiness_score": 0.5,
+	"angersadness_score": 0.1
     }
 
 if __name__ == "__main__":
