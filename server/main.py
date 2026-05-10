@@ -7,7 +7,7 @@ app = FastAPI()
 class Message(BaseModel):
     text: str
 
-@app.post("/test")
+@app.post("/chat")
 async def test_communication(msg: Message):
     print(f"언리얼에서 온 메시지: {msg.text}")
     # 언리얼로 다시 보낼 가짜 응답 데이터
