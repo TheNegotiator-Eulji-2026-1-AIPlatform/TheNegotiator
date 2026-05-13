@@ -22,7 +22,7 @@ data_path = os.path.join(
     "processed"
 )
 
-pkl_save_path = os.path.join(server_dir, "pkls")
+pkl_save_path = os.path.join(server_dir, "models")
 
 
 # =========================

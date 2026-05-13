@@ -92,3 +92,6 @@ client/Build/
 client/.vs/
 client/*.sln
 client/*.suo
+
+#pt 모델 제외
+*.pt
