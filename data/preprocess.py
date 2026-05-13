@@ -5,48 +5,23 @@ AIHUB 감성대화말뭉치 전처리 파이프라인
 The Negotiator — 협상가 프로젝트
 
 Author  : 김동훈
-Version : 5.0.0  (실제 JSON 구조 확인 후 최종본)
+Version : 7.0.0
 
-실제 JSON 구조
---------------
-[                                        ← 루트가 리스트
-  {
-    "profile": {
-      "emotion": {
-        "type": "E18"                    ← 감정 소분류 코드 (E10~E69)
-      }
-    },
-    "talk": {
-      "content": {
-        "HS01": "사람 발화 1",            ← 사람문장1
-        "SS01": "시스템 응답 1",          ← 시스템문장1
-        "HS02": "사람 발화 2",            ← 사람문장2
-        "SS02": "시스템 응답 2",          ← 시스템문장2
-        "HS03": "",                       ← 사람문장3 (없으면 빈 문자열)
-        "SS03": ""                        ← 시스템문장3 (없으면 빈 문자열)
-      }
-    }
-  },
-  ...
-]
+변경사항
+--------
+- system_response 복구 (NPC 대사 생성에 활용)
+- 감정 3종만 사용: 분노 / 슬픔 / 기쁨
 
-E코드 → 감정_대분류 매핑 (xlsx 샘플로 검증 완료)
--------------------------------------------------
+E코드 → 감정 매핑
+-----------------
 E10~E19 → 분노
 E20~E29 → 슬픔
-E30~E39 → 불안
-E40~E49 → 상처
-E50~E59 → 당황
 E60~E69 → 기쁨
+나머지   → 제거
 
-전처리 단계
------------
-1. JSON 로드       — HS01,HS02,HS03을 각각 개별 샘플로 추출 / 빈 문자열 스킵
-2. 결측치 처리     — 빈 텍스트 / 5자 미만 초단문 제거
-3. 텍스트 정규화   — HTML 태그, 특수문자, 연속 공백 정리
-4. E코드 변환      — E10~E69 → 감정_대분류 6종으로 변환
-5. 클래스 불균형   — 다수 클래스 다운샘플링 (클래스당 최대 5,000건)
-6. 데이터 분리     — Train / Validation / Test = 8:1:1 (Stratified Split)
+저장 컬럼
+---------
+text | system_response | emotion
 """
 
 import os
@@ -74,17 +49,14 @@ logger = logging.getLogger(__name__)
 # 상수 정의
 # ──────────────────────────────────────────────
 
-# E코드 → 감정_대분류 매핑 (xlsx 샘플로 검증 완료)
+# E코드 → 감정 매핑 (3종만)
 EMOTION_CODE_MAP = {
     **{f"E{i}": "분노" for i in range(10, 20)},   # E10~E19
     **{f"E{i}": "슬픔" for i in range(20, 30)},   # E20~E29
-    **{f"E{i}": "불안" for i in range(30, 40)},   # E30~E39
-    **{f"E{i}": "상처" for i in range(40, 50)},   # E40~E49
-    **{f"E{i}": "당황" for i in range(50, 60)},   # E50~E59
     **{f"E{i}": "기쁨" for i in range(60, 70)},   # E60~E69
 }
 
-VALID_EMOTIONS      = {"분노", "불안", "당황", "슬픔", "상처", "기쁨"}
+VALID_EMOTIONS        = {"분노", "슬픔", "기쁨"}
 MAX_SAMPLES_PER_CLASS = 5_000
 MIN_TEXT_LENGTH       = 5
 RANDOM_SEED           = 42
@@ -99,27 +71,26 @@ def extract_from_item(item: dict) -> list[dict]:
     단일 항목에서 (text, system_response, emotion) 레코드를 추출한다.
 
     HS01,HS02,HS03을 각각 개별 샘플로 반환한다.
-    빈 문자열인 턴은 자동으로 스킵한다.
+    - 분노/슬픔/기쁨 외 감정은 스킵
+    - 빈 문자열 턴은 스킵
     """
     records = []
 
     try:
         e_code  = item["profile"]["emotion"]["type"].strip()
         emotion = EMOTION_CODE_MAP.get(e_code)
+
+        # 분노/슬픔/기쁨 외 감정은 스킵
         if not emotion:
             return records
 
         content = item["talk"]["content"]
 
-        # HS01/SS01, HS02/SS02, HS03/SS03 순서대로 추출
         for i in range(1, 4):
-            hs_key = f"HS0{i}"
-            ss_key = f"SS0{i}"
+            text            = content.get(f"HS0{i}", "").strip()
+            system_response = content.get(f"SS0{i}", "").strip()
 
-            text            = content.get(hs_key, "").strip()
-            system_response = content.get(ss_key, "").strip()
-
-            # 빈 문자열이면 스킵
+            # 사람 발화가 없으면 스킵
             if not text:
                 continue
 
@@ -146,11 +117,7 @@ def load_single_json(file_path: str) -> list[dict]:
         logger.warning(f"JSON 파싱 실패 — {os.path.basename(file_path)}: {e}")
         return records
 
-    # 루트가 리스트인 경우와 딕셔너리인 경우 모두 처리
-    if isinstance(raw, list):
-        data_list = raw
-    else:
-        data_list = raw.get("data", [])
+    data_list = raw if isinstance(raw, list) else raw.get("data", [])
 
     for item in data_list:
         result = extract_from_item(item)
@@ -161,13 +128,7 @@ def load_single_json(file_path: str) -> list[dict]:
 
 
 def load_all_json(data_dir: str) -> pd.DataFrame:
-    """
-    디렉터리 내 모든 JSON 파일을 재귀 탐색하여 DataFrame으로 합친다.
-
-    Returns
-    -------
-    pd.DataFrame : columns = ["text", "system_response", "emotion"]
-    """
+    """디렉터리 내 모든 JSON 파일을 재귀 탐색하여 DataFrame으로 합친다."""
     json_files = glob.glob(os.path.join(data_dir, "**", "*.json"), recursive=True)
 
     if not json_files:
@@ -189,7 +150,7 @@ def load_all_json(data_dir: str) -> pd.DataFrame:
         raise ValueError("유효한 데이터가 없습니다. JSON 구조를 확인해주세요.")
 
     df = pd.DataFrame(all_records)
-    logger.info(f"원본 총 발화 수: {len(df):,}건 (HS01,HS02,HS03 합산)")
+    logger.info(f"원본 총 발화 수: {len(df):,}건 (분노/슬픔/기쁨만)")
     return df
 
 
@@ -234,7 +195,7 @@ def apply_normalization(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ──────────────────────────────────────────────
-# STEP 4: E코드 → 감정_대분류 변환 검증
+# STEP 4: 레이블 검증
 # ──────────────────────────────────────────────
 
 def validate_labels(df: pd.DataFrame) -> pd.DataFrame:
@@ -252,7 +213,7 @@ def validate_labels(df: pd.DataFrame) -> pd.DataFrame:
 # ──────────────────────────────────────────────
 
 def downsample(df: pd.DataFrame, max_per_class: int = MAX_SAMPLES_PER_CLASS) -> pd.DataFrame:
-    """각 감정 클래스를 max_per_class 이하로 다운샘플링. 소수 클래스는 유지."""
+    """각 감정 클래스를 max_per_class 이하로 다운샘플링."""
     frames = []
     for emotion, group in df.groupby("emotion"):
         frames.append(group.sample(min(len(group), max_per_class), random_state=RANDOM_SEED))
@@ -266,7 +227,7 @@ def downsample(df: pd.DataFrame, max_per_class: int = MAX_SAMPLES_PER_CLASS) -> 
 # STEP 6: 데이터 분리 (Stratified Split)
 # ──────────────────────────────────────────────
 
-def split_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def split_dataset(df: pd.DataFrame):
     """Stratified Split으로 Train / Validation / Test = 8:1:1 분리."""
     train_df, temp_df = train_test_split(
         df, test_size=0.2, stratify=df["emotion"], random_state=RANDOM_SEED
@@ -296,16 +257,17 @@ def print_summary(raw_count, final_df, train_df, val_df, test_df, output_dir):
     print(sep)
 
     print("\n【 사용한 컬럼 】")
-    print("  ✅  E코드(E10~E69) → 감정_대분류 6종으로 변환")
-    print("  ✅  HS01, HS02, HS03 → 학습 텍스트 (개별 샘플)")
-    print("  ✅  SS01, SS02, SS03 → NPC 응답 (system_response)")
-    print("  ❌  감정_소분류 / 연령 / 성별 / 상황키워드 / 신체질환 → 제거")
+    print("  ✅  HS01, HS02, HS03     → 학습 텍스트 (text)")
+    print("  ✅  SS01, SS02, SS03     → NPC 응답 (system_response)")
+    print("  ✅  E코드 → 감정 3종     → 분노 / 슬픔 / 기쁨")
+    print("  ❌  불안 / 당황 / 상처   → 제거")
+    print("  ❌  연령 / 성별 / 상황키워드 / 신체질환 → 제거")
 
     print("\n【 전처리 단계별 결과 】")
     print(f"  STEP 1  JSON 로드 & HS01,02,03 개별 추출  {raw_count:>8,} 건")
     print(f"  STEP 2  결측치 / 5자 미만 제거")
     print(f"  STEP 3  텍스트 정규화 (HTML·특수문자·공백)")
-    print(f"  STEP 4  E코드 → 감정_대분류 변환 & 검증")
+    print(f"  STEP 4  레이블 검증 (분노/슬픔/기쁨만 유지)")
     print(f"  STEP 5  다운샘플링 (클래스당 최대 {MAX_SAMPLES_PER_CLASS:,}건)")
     print(f"          → 최종 {len(final_df):,} 건")
 
@@ -348,7 +310,7 @@ def run_pipeline(data_dir: str, output_dir: str) -> None:
     logger.info("[STEP 3] 텍스트 정규화")
     df = apply_normalization(df)
 
-    logger.info("[STEP 4] E코드 → 감정_대분류 변환 검증")
+    logger.info("[STEP 4] 레이블 검증 (분노/슬픔/기쁨만 유지)")
     df = validate_labels(df)
 
     logger.info("[STEP 5] 클래스 불균형 처리 (다운샘플링)")
@@ -357,6 +319,7 @@ def run_pipeline(data_dir: str, output_dir: str) -> None:
     logger.info("[STEP 6] Stratified Split (8:1:1)")
     train_df, val_df, test_df = split_dataset(df)
 
+    # text, system_response, emotion 3개 컬럼 저장
     cols = ["text", "system_response", "emotion"]
     train_df[cols].to_csv(os.path.join(output_dir, "train.csv"), index=False, encoding="utf-8-sig")
     val_df[cols].to_csv(  os.path.join(output_dir, "val.csv"),   index=False, encoding="utf-8-sig")
