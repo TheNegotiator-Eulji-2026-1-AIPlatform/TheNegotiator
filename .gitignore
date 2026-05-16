@@ -92,3 +92,5 @@ client/Build/
 client/.vs/
 client/*.sln
 client/*.suo
+
+__pycache__/
