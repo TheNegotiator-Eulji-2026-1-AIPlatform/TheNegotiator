@@ -177,10 +177,10 @@ def build_dataset(raw_df):
             row["사람문장1"]
         ).strip()
 
-        # 상황당 랜덤 부정문 3개
+        # 상황당 랜덤 부정문 1개
         sampled_bad = random.sample(
             bad_templates,
-            3
+            1
         )
 
         for bad_text in sampled_bad:
