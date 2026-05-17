@@ -94,3 +94,5 @@ client/*.sln
 client/*.suo
 
 __pycache__/
+
+project/
