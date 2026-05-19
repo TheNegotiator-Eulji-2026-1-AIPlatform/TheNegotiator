@@ -82,6 +82,7 @@ Build/
 .vs/
 *.sln
 *.suo
+FAB/
 
 # client folder
 client/Binaries/
@@ -92,6 +93,7 @@ client/Build/
 client/.vs/
 client/*.sln
 client/*.suo
+
 
 __pycache__/
 
