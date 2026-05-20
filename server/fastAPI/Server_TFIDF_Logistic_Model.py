@@ -14,6 +14,8 @@ model = joblib.load(
     os.path.join(BASE_DIR, "tfidf_2class_model.pkl")
 )
 print(model)
+
+
 # =====================================
 # API
 # =====================================
@@ -58,7 +60,7 @@ async def evaluate_response(user_input: dict):
     if prediction == "bad":
 
         stability_delta = -10
-        anger_delta = 15
+        anger_delta = 25
 
     elif prediction == "good":
         # 3턴 만에 결판을 내기 위해 한 방의 임팩트(35%)를 키웁니다!
