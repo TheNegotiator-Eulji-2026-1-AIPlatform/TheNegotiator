@@ -1,0 +1,17 @@
+FROM python:3.10
+
+WORKDIR /code
+
+# 1. 패키지 설치
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 2. 소스 파일 전체 복사
+COPY . .
+
+# 3. 허깅페이스 스페이스 포트 열어두기
+EXPOSE 8000
+EXPOSE 8501
+
+# 4. [수정본] python -m 스위치를 사용해서 스트림릿을 직접 실행!
+CMD ["sh", "-c", "python -m streamlit run dashboard.py --server.port=8501 --server.address=0.0.0.0 & uvicorn app:app --host 0.0.0.0 --port=8000"]

@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+numpy
+pandas
+scikit-learn==1.7.2
+joblib
+torch>=2.0.0
+transformers>=4.40.0
+streamlit
