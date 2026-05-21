@@ -105,7 +105,6 @@ async def evaluate_response(user_input: dict):
         stability_delta = -10
         anger_delta = 25
     elif prediction == "good":
-        # 3턴 만에 결판을 내기 위한 경준님의 메인 한 방 이펙트 (35%)
         stability_delta = 35  
         anger_delta = -25
     
