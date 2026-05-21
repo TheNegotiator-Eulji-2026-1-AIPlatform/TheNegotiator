@@ -1,5 +1,6 @@
 import pandas as pd
 import joblib
+import os
 
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -9,8 +10,18 @@ from sklearn.metrics import classification_report
 # =====================================
 # 1. 데이터 로드
 # =====================================
-train_df = pd.read_csv("train_processed.csv")
-valid_df = pd.read_csv("valid_processed.csv")
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 2. os.path.join과 '..'을 활용해 최상위 project 폴더를 거쳐 data 폴더로 조인합니다.
+#   (current_dir에서 위로 두 번(.., ..) 올라가서 data/processed 폴더와 합치겠다는 뜻!)
+data_dir = os.path.join(current_dir, "..", "..", "data", "processed")
+
+# 3. 최종 완성된 절대 경로로 CSV 안전하게 로드!
+train_csv_path = os.path.join(data_dir, "train_processed.csv")
+valid_csv_path = os.path.join(data_dir, "valid_processed.csv")
+
+train_df = pd.read_csv(train_csv_path)
+valid_df = pd.read_csv(valid_csv_path)
 
 # [보정] 데이터셋 내부에 NaN(결측치)이나 숫자가 섞여 있으면 TF-IDF 연산 시 에러가 날 수 있으므로 문스트링 변환 안전장치 추가
 train_df["player_input"] = train_df["player_input"].astype(str)
