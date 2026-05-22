@@ -73,3 +73,28 @@ Plugins/**/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Build/
+.vs/
+*.sln
+*.suo
+FAB/
+
+# client folder
+client/Binaries/
+client/DerivedDataCache/
+client/Intermediate/
+client/Saved/
+client/Build/
+client/.vs/
+client/*.sln
+client/*.suo
+
+
+__pycache__/
+
+project/
